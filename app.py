@@ -159,17 +159,49 @@ def service_detail(service_id):
 
 @app.route('/api/professionals', methods=['GET'])
 def get_professionals():
-    professionals = db.session.query(User, ProfessionalProfile).join(
-        ProfessionalProfile, User.id == ProfessionalProfile.user_id, isouter=True
-    ).filter(User.user_type == 'professional').all()
+    # Get all professionals with completed profiles
+    professionals_with_profiles = db.session.query(User, ProfessionalProfile).join(
+        ProfessionalProfile, User.id == ProfessionalProfile.user_id
+    ).filter(
+        User.user_type == 'professional',
+        ProfessionalProfile.setup_complete == True
+    ).all()
     
     result = []
-    for user, profile in professionals:
-        # Add sample data for existing users without profiles
-        if not profile and user.name in ['Kinara', 'Nathan']:
+    
+    # Add professionals with completed profiles
+    for user, profile in professionals_with_profiles:
+        result.append({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'category': profile.category,
+            'specialty': profile.specialty or profile.category.title(),
+            'location': profile.location,
+            'phone': profile.phone,
+            'bio': profile.bio,
+            'pricing': profile.pricing,
+            'rating': 4.5,
+            'reviews': 25,
+            'verified': True,
+            'portfolio': [],
+            'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+        })
+    
+    # Add legacy professionals without profiles (for existing data)
+    legacy_professionals = db.session.query(User).filter(
+        User.user_type == 'professional',
+        ~User.id.in_([p.user_id for _, p in professionals_with_profiles])
+    ).all()
+    
+    for user in legacy_professionals:
+        if user.name in ['Kinara', 'Nathan', '2PAC', 'Marley', 'John']:
             sample_data = {
                 'Kinara': {'category': 'photographer', 'location': 'New York, NY', 'phone': '+1-555-0123', 'pricing': '$150/hour'},
-                'Nathan': {'category': 'videographer', 'location': 'Los Angeles, CA', 'phone': '+1-555-0456', 'pricing': '$200/hour'}
+                'Nathan': {'category': 'videographer', 'location': 'Los Angeles, CA', 'phone': '+1-555-0456', 'pricing': '$200/hour'},
+                '2PAC': {'category': 'dj', 'location': 'Los Angeles, CA', 'phone': '+1-555-2PAC', 'pricing': '$400/event'},
+                'Marley': {'category': 'venue coordinator', 'location': 'Nairobi, Kenya', 'phone': '+254-700-123456', 'pricing': '$120/hour'},
+                'John': {'category': 'event planner', 'location': 'New York, NY', 'phone': '+1-555-JOHN', 'pricing': '$1500/event'}
             }
             data = sample_data.get(user.name, {})
             result.append({
@@ -188,25 +220,6 @@ def get_professionals():
                 'portfolio': [],
                 'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
             })
-        else:
-            # Only show professionals who have completed their setup
-            if profile and profile.setup_complete:
-                result.append({
-                    'id': user.id,
-                    'name': user.name,
-                    'email': user.email,
-                    'category': profile.category,
-                    'specialty': profile.specialty or profile.category.title(),
-                    'location': profile.location,
-                    'phone': profile.phone,
-                    'bio': profile.bio,
-                    'pricing': profile.pricing,
-                    'rating': 4.5,
-                    'reviews': 25,
-                    'verified': True,
-                    'portfolio': [],
-                    'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
-                })
     # Add sample professionals for all categories
     if len([r for r in result if r.get('verified')]) < 5:
         sample_professionals = [
@@ -303,7 +316,9 @@ def bookings():
         db.session.commit()
         return jsonify({'message': 'Booking created', 'id': booking.id}), 201
 
+# Initialize database tables
+with app.app_context():
+    db.create_all()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)
