@@ -32,7 +32,7 @@ python run.py
 ## Deployment to Render
 
 1. Create a new repository with these files
-2. Connect to Render and create a new Web Service
+2. Connect to Render and cr eate a new Web Service
 3. Set the following environment variables in Render:
    - `DATABASE_URL`: PostgreSQL connection string (provided by Render)
    - `JWT_SECRET_KEY`: A strong secret key for JWT tokens
@@ -51,3 +51,4 @@ python run.py
 
 The application uses SQLAlchemy with PostgreSQL in production and SQLite for development.
 # eventcbacknd
+ 

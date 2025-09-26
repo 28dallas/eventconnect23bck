@@ -171,21 +171,33 @@ def get_professionals():
     
     # Add professionals with completed profiles
     for user, profile in professionals_with_profiles:
+        # Determine gender-appropriate image
+        female_names = ['sarah', 'lisa', 'emma', 'maria', 'anna', 'jane', 'mary', 'kinara']
+        is_female = any(name in user.name.lower() for name in female_names)
+        
+        if is_female:
+            image_url = 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face'
+        else:
+            image_url = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face'
+        
         result.append({
             'id': user.id,
             'name': user.name,
             'email': user.email,
             'category': profile.category,
-            'specialty': profile.specialty or profile.category.title(),
-            'location': profile.location,
+            'specialty': profile.specialty or f'{profile.category.title()} Specialist',
+            'location': profile.location or 'Kenya',
             'phone': profile.phone,
-            'bio': profile.bio,
-            'pricing': profile.pricing,
-            'rating': 4.5,
-            'reviews': 25,
+            'bio': profile.bio or f'Professional {profile.category} service provider with extensive experience in creating memorable events.',
+            'pricing': profile.pricing or 'Contact for pricing',
+            'rating': round(4.5 + (hash(user.name) % 5) * 0.1, 1),
+            'reviews': 25 + (hash(user.name) % 75),
             'verified': True,
+            'experience': '5+ years',
+            'completedEvents': 100 + (hash(user.name) % 200),
+            'responseTime': 'Within 2 hours',
             'portfolio': [],
-            'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+            'image': image_url
         })
     
     # Add legacy professionals without profiles (for existing data)
@@ -197,11 +209,66 @@ def get_professionals():
     for user in legacy_professionals:
         if user.name in ['Kinara', 'Nathan', '2PAC', 'Marley', 'John']:
             sample_data = {
-                'Kinara': {'category': 'photographer', 'location': 'New York, NY', 'phone': '+1-555-0123', 'pricing': '$150/hour'},
-                'Nathan': {'category': 'videographer', 'location': 'Los Angeles, CA', 'phone': '+1-555-0456', 'pricing': '$200/hour'},
-                '2PAC': {'category': 'dj', 'location': 'Los Angeles, CA', 'phone': '+1-555-2PAC', 'pricing': '$400/event'},
-                'Marley': {'category': 'venue coordinator', 'location': 'Nairobi, Kenya', 'phone': '+254-700-123456', 'pricing': '$120/hour'},
-                'John': {'category': 'event planner', 'location': 'New York, NY', 'phone': '+1-555-JOHN', 'pricing': '$1500/event'}
+                'Kinara': {
+                    'category': 'photographer', 
+                    'location': 'Nairobi, Kenya', 
+                    'phone': '+254-700-123456', 
+                    'pricing': 'KSh180,000/event',
+                    'bio': 'Award-winning photographer specializing in capturing life\'s most precious moments with artistic flair and professional excellence.',
+                    'specialty': 'Wedding & Portrait Photography',
+                    'experience': '8+ years',
+                    'completedEvents': 250,
+                    'responseTime': 'Within 1 hour',
+                    'image': 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face'
+                },
+                'Nathan': {
+                    'category': 'videographer', 
+                    'location': 'Mombasa, Kenya', 
+                    'phone': '+254-722-456789', 
+                    'pricing': 'KSh260,000/event',
+                    'bio': 'Cinematic storyteller creating breathtaking wedding films and corporate videos that capture emotion and tell compelling stories.',
+                    'specialty': 'Cinematic Wedding Films',
+                    'experience': '10+ years',
+                    'completedEvents': 180,
+                    'responseTime': 'Within 2 hours',
+                    'image': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face'
+                },
+                '2PAC': {
+                    'category': 'dj', 
+                    'location': 'Nairobi, Kenya', 
+                    'phone': '+254-733-2PAC99', 
+                    'pricing': 'KSh65,000/event',
+                    'bio': 'Professional DJ and sound engineer bringing energy and unforgettable experiences to every celebration with top-tier equipment.',
+                    'specialty': 'Wedding & Party DJ',
+                    'experience': '6+ years',
+                    'completedEvents': 320,
+                    'responseTime': 'Within 30 minutes',
+                    'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+                },
+                'Marley': {
+                    'category': 'venue coordinator', 
+                    'location': 'Kisumu, Kenya', 
+                    'phone': '+254-744-MARLEY', 
+                    'pricing': 'KSh156,000/event',
+                    'bio': 'Expert venue coordinator transforming spaces into magical settings with meticulous attention to detail and creative vision.',
+                    'specialty': 'Luxury Venue Coordination',
+                    'experience': '12+ years',
+                    'completedEvents': 200,
+                    'responseTime': 'Within 1 hour',
+                    'image': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop&crop=face'
+                },
+                'John': {
+                    'category': 'event planner', 
+                    'location': 'Nakuru, Kenya', 
+                    'phone': '+254-755-JOHN01', 
+                    'pricing': 'KSh390,000/event',
+                    'bio': 'Full-service event planner specializing in luxury celebrations and corporate events with flawless execution and creative excellence.',
+                    'specialty': 'Luxury Event Planning',
+                    'experience': '15+ years',
+                    'completedEvents': 400,
+                    'responseTime': 'Within 30 minutes',
+                    'image': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&h=300&fit=crop&crop=face'
+                }
             }
             data = sample_data.get(user.name, {})
             result.append({
@@ -209,26 +276,29 @@ def get_professionals():
                 'name': user.name,
                 'email': user.email,
                 'category': data.get('category', 'general'),
-                'specialty': data.get('category', 'Event Professional').title(),
+                'specialty': data.get('specialty', data.get('category', 'Event Professional').title()),
                 'location': data.get('location', 'Location not specified'),
                 'phone': data.get('phone'),
-                'bio': f'Professional {data.get("category", "event")} service provider',
+                'bio': data.get('bio', f'Professional {data.get("category", "event")} service provider with years of experience delivering exceptional results.'),
                 'pricing': data.get('pricing', 'Contact for pricing'),
-                'rating': 4.5,
-                'reviews': 25,
+                'rating': round(4.5 + (hash(user.name) % 5) * 0.1, 1),  # Generate varied ratings between 4.5-4.9
+                'reviews': 25 + (hash(user.name) % 50),  # Generate varied review counts
                 'verified': True,
+                'experience': data.get('experience', '5+ years'),
+                'completedEvents': data.get('completedEvents', 100),
+                'responseTime': data.get('responseTime', 'Within 2 hours'),
                 'portfolio': [],
-                'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+                'image': data.get('image', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face')
             })
     # Add sample professionals for all categories
     if len([r for r in result if r.get('verified')]) < 5:
         sample_professionals = [
-            {'id': 101, 'name': 'Sarah Johnson', 'email': 'sarah@example.com', 'category': 'photographer', 'specialty': 'Wedding Photography', 'location': 'Miami, FL', 'phone': '+1-555-0789', 'pricing': '$180/hour', 'bio': 'Award-winning wedding and event photographer'},
-            {'id': 102, 'name': 'Mike Chen', 'email': 'mike@example.com', 'category': 'dj', 'specialty': 'Wedding DJ', 'location': 'Chicago, IL', 'phone': '+1-555-0234', 'pricing': '$300/event', 'bio': 'Professional DJ specializing in weddings and corporate events'},
-            {'id': 103, 'name': 'Lisa Rodriguez', 'email': 'lisa@example.com', 'category': 'event planner', 'specialty': 'Wedding Planner', 'location': 'Austin, TX', 'phone': '+1-555-0567', 'pricing': '$2000/event', 'bio': 'Full-service event planning with 10+ years experience'},
-            {'id': 104, 'name': 'David Kim', 'email': 'david@example.com', 'category': 'caterer', 'specialty': 'Gourmet Catering', 'location': 'Seattle, WA', 'phone': '+1-555-0890', 'pricing': '$25/person', 'bio': 'Gourmet catering for all occasions'},
-            {'id': 105, 'name': 'Emma Wilson', 'email': 'emma@example.com', 'category': 'decorator', 'specialty': 'Event Styling', 'location': 'Denver, CO', 'phone': '+1-555-0345', 'pricing': '$500/event', 'bio': 'Creative event decoration and styling'},
-            {'id': 106, 'name': 'Carlos Martinez', 'email': 'carlos@example.com', 'category': 'venue coordinator', 'specialty': 'Venue Management', 'location': 'Phoenix, AZ', 'phone': '+1-555-0678', 'pricing': '$150/hour', 'bio': 'Venue management and coordination specialist'}
+            {'id': 101, 'name': 'Sarah Johnson', 'email': 'sarah@example.com', 'category': 'photographer', 'specialty': 'Wedding Photography', 'location': 'Miami, FL', 'phone': '+1-555-0789', 'pricing': '$180/hour', 'bio': 'Award-winning wedding and event photographer', 'image': 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=300&h=300&fit=crop&crop=face'},
+            {'id': 102, 'name': 'Mike Chen', 'email': 'mike@example.com', 'category': 'dj', 'specialty': 'Wedding DJ', 'location': 'Chicago, IL', 'phone': '+1-555-0234', 'pricing': '$300/event', 'bio': 'Professional DJ specializing in weddings and corporate events', 'image': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face'},
+            {'id': 103, 'name': 'Lisa Rodriguez', 'email': 'lisa@example.com', 'category': 'event planner', 'specialty': 'Wedding Planner', 'location': 'Austin, TX', 'phone': '+1-555-0567', 'pricing': '$2000/event', 'bio': 'Full-service event planning with 10+ years experience', 'image': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=300&fit=crop&crop=face'},
+            {'id': 104, 'name': 'David Kim', 'email': 'david@example.com', 'category': 'caterer', 'specialty': 'Gourmet Catering', 'location': 'Seattle, WA', 'phone': '+1-555-0890', 'pricing': '$25/person', 'bio': 'Gourmet catering for all occasions', 'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'},
+            {'id': 105, 'name': 'Emma Wilson', 'email': 'emma@example.com', 'category': 'decorator', 'specialty': 'Event Styling', 'location': 'Denver, CO', 'phone': '+1-555-0345', 'pricing': '$500/event', 'bio': 'Creative event decoration and styling', 'image': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=300&fit=crop&crop=face'},
+            {'id': 106, 'name': 'Carlos Martinez', 'email': 'carlos@example.com', 'category': 'venue coordinator', 'specialty': 'Venue Management', 'location': 'Phoenix, AZ', 'phone': '+1-555-0678', 'pricing': '$150/hour', 'bio': 'Venue management and coordination specialist', 'image': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop&crop=face'}
         ]
         
         for prof in sample_professionals:
@@ -246,7 +316,7 @@ def get_professionals():
                 'reviews': 25,
                 'verified': True,
                 'portfolio': [],
-                'image': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+                'image': prof.get('image', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face')
             })
     
     return jsonify(result)
