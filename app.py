@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from flask_marshmallow import Marshmallow
+# from flask_marshmallow import Marshmallow
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 
@@ -14,7 +14,7 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
 db = SQLAlchemy(app)
-ma = Marshmallow(app)
+# ma = Marshmallow(app)
 jwt = JWTManager(app)
 CORS(app)
 
@@ -71,39 +71,29 @@ class Booking(db.Model):
     
     service = db.relationship('Service', backref='bookings')
 
-# Marshmallow Schemas
-class UserSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = User
-        load_instance = True
-        exclude = ('password_hash',)
+# Helper functions for serialization
+def serialize_service(service):
+    return {
+        'id': service.id,
+        'name': service.name,
+        'description': service.description,
+        'price': service.price,
+        'category': service.category,
+        'professional_id': service.professional_id,
+        'created_at': service.created_at.isoformat() if service.created_at else None
+    }
 
-class ServiceSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Service
-        load_instance = True
-        include_fk = True
-
-class ProfessionalProfileSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = ProfessionalProfile
-        load_instance = True
-        include_fk = True
-
-class BookingSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Booking
-        load_instance = True
-        include_fk = True
-
-# Initialize schemas
-user_schema = UserSchema()
-users_schema = UserSchema(many=True)
-service_schema = ServiceSchema()
-services_schema = ServiceSchema(many=True)
-profile_schema = ProfessionalProfileSchema()
-booking_schema = BookingSchema()
-bookings_schema = BookingSchema(many=True)
+def serialize_booking(booking):
+    return {
+        'id': booking.id,
+        'client_id': booking.client_id,
+        'service_id': booking.service_id,
+        'event_date': booking.event_date.isoformat() if booking.event_date else None,
+        'status': booking.status,
+        'rating': booking.rating,
+        'review': booking.review,
+        'created_at': booking.created_at.isoformat() if booking.created_at else None
+    }
 
 # Routes
 @app.route('/api/register', methods=['POST'])
@@ -142,7 +132,7 @@ def login():
 def services():
     if request.method == 'GET':
         services = Service.query.all()
-        return services_schema.jsonify(services)
+        return jsonify([serialize_service(s) for s in services])
     
     elif request.method == 'POST':
         data = request.get_json()
@@ -155,7 +145,7 @@ def services():
         )
         db.session.add(service)
         db.session.commit()
-        return service_schema.jsonify(service), 201
+        return jsonify(serialize_service(service)), 201
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -409,7 +399,7 @@ def professional_profile():
 def bookings():
     if request.method == 'GET':
         bookings = Booking.query.filter_by(client_id=get_jwt_identity()).all()
-        return bookings_schema.jsonify(bookings)
+        return jsonify([serialize_booking(b) for b in bookings])
     
     elif request.method == 'POST':
         data = request.get_json()
@@ -421,7 +411,7 @@ def bookings():
         )
         db.session.add(booking)
         db.session.commit()
-        return booking_schema.jsonify(booking), 201
+        return jsonify(serialize_booking(booking)), 201
 
 @app.route('/api/favorites', methods=['GET', 'POST', 'DELETE'])
 @jwt_required()
@@ -430,7 +420,7 @@ def user_favorites():
     user = User.query.get(user_id)
     
     if request.method == 'GET':
-        return services_schema.jsonify(user.favorite_services)
+        return jsonify([serialize_service(s) for s in user.favorite_services])
     
     elif request.method == 'POST':
         data = request.get_json()
