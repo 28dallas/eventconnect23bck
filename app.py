@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_marshmallow import Marshmallow
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 
@@ -13,8 +14,15 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
 db = SQLAlchemy(app)
+ma = Marshmallow(app)
 jwt = JWTManager(app)
 CORS(app)
+
+# Many-to-many association table for user favorites
+user_favorites = db.Table('user_favorites',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('service_id', db.Integer, db.ForeignKey('service.id'), primary_key=True)
+)
 
 # Models
 class User(db.Model):
@@ -28,6 +36,7 @@ class User(db.Model):
     bookings = db.relationship('Booking', backref='client', lazy=True, foreign_keys='Booking.client_id')
     services = db.relationship('Service', backref='professional', lazy=True)
     professional_profile = db.relationship('ProfessionalProfile', backref='user', uselist=False)
+    favorite_services = db.relationship('Service', secondary=user_favorites, lazy='subquery', backref=db.backref('favorited_by', lazy=True))
 
 class ProfessionalProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,6 +70,40 @@ class Booking(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     service = db.relationship('Service', backref='bookings')
+
+# Marshmallow Schemas
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        load_instance = True
+        exclude = ('password_hash',)
+
+class ServiceSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Service
+        load_instance = True
+        include_fk = True
+
+class ProfessionalProfileSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = ProfessionalProfile
+        load_instance = True
+        include_fk = True
+
+class BookingSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Booking
+        load_instance = True
+        include_fk = True
+
+# Initialize schemas
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+service_schema = ServiceSchema()
+services_schema = ServiceSchema(many=True)
+profile_schema = ProfessionalProfileSchema()
+booking_schema = BookingSchema()
+bookings_schema = BookingSchema(many=True)
 
 # Routes
 @app.route('/api/register', methods=['POST'])
@@ -99,10 +142,7 @@ def login():
 def services():
     if request.method == 'GET':
         services = Service.query.all()
-        return jsonify([{
-            'id': s.id, 'name': s.name, 'description': s.description,
-            'price': s.price, 'category': s.category, 'professional_id': s.professional_id
-        } for s in services])
+        return services_schema.jsonify(services)
     
     elif request.method == 'POST':
         data = request.get_json()
@@ -115,7 +155,7 @@ def services():
         )
         db.session.add(service)
         db.session.commit()
-        return jsonify({'message': 'Service created', 'id': service.id}), 201
+        return service_schema.jsonify(service), 201
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
@@ -369,10 +409,7 @@ def professional_profile():
 def bookings():
     if request.method == 'GET':
         bookings = Booking.query.filter_by(client_id=get_jwt_identity()).all()
-        return jsonify([{
-            'id': b.id, 'service_id': b.service_id, 'event_date': b.event_date.isoformat(),
-            'status': b.status, 'rating': b.rating, 'review': b.review
-        } for b in bookings])
+        return bookings_schema.jsonify(bookings)
     
     elif request.method == 'POST':
         data = request.get_json()
@@ -384,7 +421,34 @@ def bookings():
         )
         db.session.add(booking)
         db.session.commit()
-        return jsonify({'message': 'Booking created', 'id': booking.id}), 201
+        return booking_schema.jsonify(booking), 201
+
+@app.route('/api/favorites', methods=['GET', 'POST', 'DELETE'])
+@jwt_required()
+def user_favorites():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    
+    if request.method == 'GET':
+        return services_schema.jsonify(user.favorite_services)
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        service = Service.query.get(data['service_id'])
+        if service and service not in user.favorite_services:
+            user.favorite_services.append(service)
+            db.session.commit()
+            return jsonify({'message': 'Service added to favorites'}), 201
+        return jsonify({'message': 'Service already in favorites or not found'}), 400
+    
+    elif request.method == 'DELETE':
+        data = request.get_json()
+        service = Service.query.get(data['service_id'])
+        if service and service in user.favorite_services:
+            user.favorite_services.remove(service)
+            db.session.commit()
+            return jsonify({'message': 'Service removed from favorites'}), 200
+        return jsonify({'message': 'Service not in favorites or not found'}), 400
 
 # Initialize database tables
 with app.app_context():
